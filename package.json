@@ -1,0 +1,30 @@
+{
+  "name": "mztay-bot",
+  "version": "1.0.0",
+  "description": "Mztay bot adalah bot whatsapp yang dilengkapi berbagai fitur. Dibuat menggunakan wweb.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MastayY/whatsapp-bot.git"
+  },
+  "keywords": [
+    "whatsapp",
+    "wa-bot",
+    "whatsapp-bot",
+    "termux",
+    "nodejs"
+  ],
+  "author": "Mastay",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MastayY/whatsapp-bot/issues"
+  },
+  "homepage": "https://github.com/MastayY/whatsapp-bot#readme",
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#fix-buttons-list"
+  }
+}
