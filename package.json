@@ -24,7 +24,8 @@
   },
   "homepage": "https://github.com/MastayY/whatsapp-bot#readme",
   "dependencies": {
+    "openai": "^3.3.0",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#fix-buttons-list"
+    "whatsapp-web.js": "D:/NasywanPrivat/whatsapp-web.js-1.21.0.tar.gz"
   }
 }
