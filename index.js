@@ -1,6 +1,7 @@
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const { Configuration, OpenAIApi } = require("openai");
 const { TiktokDL } = require("@tobyg74/tiktok-api-dl")
+const script = require("./src/file/script.js")
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const axios = require('axios');
@@ -16,29 +17,28 @@ const client = new Client({
 
 const configuration = new Configuration({
     apiKey: "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",
-  });
-  const openai = new OpenAIApi(configuration);
- 
+});
+const openai = new OpenAIApi(configuration);
 
 const prefixList = ["/", "!", "#", "$"];
 let prefix = '!';
 
 client.on('qr', (qr) => {
-  // Tampilkan QR code di terminal
-  qrcode.generate(qr, { small: true });
+    // Tampilkan QR code di terminal
+    qrcode.generate(qr, { small: true });
 });
 
 client.on('ready', () => {
-  console.log('Connected and ready to use');
+    console.log('Connected and ready to use');
 
   // Mengubah status teks profil
-client.setStatus(`Status: Online | ${config.BOT_NAME} V ${config.BOT_VER} | Author : ${config.BOT_OWNER}`)
-    .then(() => {
-        console.log('Info profil berhasil diubah');
-    })
-    .catch((error) => {
-        console.error('Gagal mengubah Info profil:', error);
-    });
+    client.setStatus(`Status: Online | ${config.BOT_NAME} V ${config.BOT_VER} | Author : ${config.BOT_OWNER}`)
+        .then(() => {
+            console.log('Info profil berhasil diubah');
+        })
+        .catch((error) => {
+            console.error('Gagal mengubah Info profil:', error);
+        });
 });
 
 client.on('disconnected', (reason) => {
@@ -73,10 +73,9 @@ client.on('message', async (msg) => {
         if (msg.body.toLowerCase() === `${prefix}halo`) {
             msg.reply(`Halo! Aku adalah sebuah bot Whatsapp yang dibuat oleh ${config.BOT_OWNER}.`);
             console.log(`${msg.from} Use command ${prefix}halo. Status : Success`);
-
         } else if(msg.body.toLowerCase() === `${prefix}help` || msg.body.toLowerCase() === `${prefix}menu`) {
             const media = await MessageMedia.fromUrl("https://i.imgur.com/nFsn61p.png");
-            const menus = `|--------- [ *INFO* ] ---------|\n*Bot Name\t:* _${config.BOT_NAME}_\n*Bot Version\t:* _${config.BOT_VER}_\n*Bot Prefix\t:* _"${prefix}"_\n*Bot Owner\t:* _${config.BOT_OWNER}_\n---------------------------\n\n|======= [ *MENU* ] =======|\n=> _*${prefix}halo*_\n=> _*${prefix}help*_\n=> _*${prefix}sticker*_\n=> _*${prefix}ask|<question>*_\n=> _*${prefix}menfes|<nomor telepon>|<nama pengirim>|<pesan>*_\n=> _*${prefix}tiktok <type> <link url tiktok>*_\n=> _*${prefix}ytmp3 <url video>*_\n\n_Note : masukkan parameter tanpa simbol "< >"_`
+            const menus = `|--------- [ *INFO* ] ---------|\n*Bot Name\t:* _${config.BOT_NAME}_\n*Bot Version\t:* _${config.BOT_VER}_\n*Bot Prefix\t:* _"${prefix}"_\n*Bot Owner\t:* _${config.BOT_OWNER}_\n---------------------------\n\n|===== [ *COMMAND* ] =====|\n=> _*${prefix}halo*_\n=> _*${prefix}help*_\n=> _*${prefix}sticker*_\n=> _*${prefix}ask|<question>*_\n=> _*${prefix}menfes|<nomor telepon>|<nama pengirim>|<pesan>*_\n=> _*${prefix}tiktok <type> <link url tiktok>*_\n=> _*${prefix}ytmp3 <url video>*_\n=> _*${prefix}urlshort <url>*_\n\n_Note : masukkan parameter tanpa simbol "< >"_`
 
             client.sendMessage(msg.from, media, {
                 caption: menus,
@@ -115,7 +114,7 @@ client.on('message', async (msg) => {
                 model: "text-davinci-003",
                 prompt: `${question}\n\nBot:`,
                 temperature: 0.9,
-                max_tokens: 150,
+                max_tokens: 1000,
                 top_p: 1,
                 frequency_penalty: 0,
                 presence_penalty: 0.6,
@@ -177,7 +176,7 @@ client.on('message', async (msg) => {
                 case 'video':
                 case 'music':
                     try {
-                        msg.reply("Fitur ini masih beta, kecepatan respon tergantung internet.");
+                        msg.reply("Mohon tunggu....\nOrang sabar disayang zeta😋");
                         const defaultUrl = await TiktokDL(url);
                         // console.log(defaultUrl);
                         const downloadUrl = defaultUrl.result[type][0];
@@ -210,7 +209,7 @@ client.on('message', async (msg) => {
                 return;
             }
 
-            msg.reply("Mohon tunggu....\nOrang sabar disayang zeta💀")
+            msg.reply("Mohon tunggu....\nOrang sabar disayang zeta😋")
 
             const url = params[1].trim();
             const defaultUrl = await ytmp3(url);
@@ -246,9 +245,34 @@ client.on('message', async (msg) => {
                 console.error(error);
                 msg.reply("Gagal mendownload audio");
             }
-        }
+        } else if (msg.body.startsWith(`${prefix}urlshort`)) {
+            const params = msg.body.split(" ");
+
+            if (params.length !== 2) {
+                console.log(`${msg.from} Use command ${prefix}urlshort. Status: Invalid parameters`);
+                return msg.reply(`Gunakan ${prefix}urlshort <url>!`);
+            }
+
+            const url = params[1].trim();
+
+            try {
+                const shortenedUrl = await script.urlShortener(url);
+                if (shortenedUrl) {
+                    msg.reply(`Berhasil membuat link yang sudah dipendekkan\n${shortenedUrl}`);
+                    console.log(`${msg.from} Use command ${prefix}urlshort. Status: Success`);
+                } else {
+                    msg.reply("Url tidak valid atau gagal terhubung ke url")
+                    console.log(`${msg.from} Use command ${prefix}urlshort. Status: Invalid URL`);
+                }
+            } catch (error) {
+              msg.reply("Gagal mengakses API");
+              console.log(`${msg.from} Use command ${prefix}urlshort. Status: Failed`, error);
+            }
+          }
+          
     } catch (err) {
         console.error(err);
+        client.sendMessage(msg.from, "Ada kesalahan dalam script bot. Silahkan hubungi developer!")
     }
 });
 
