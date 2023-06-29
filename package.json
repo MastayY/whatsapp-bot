@@ -24,7 +24,6 @@
   },
   "homepage": "https://github.com/MastayY/whatsapp-bot#readme",
   "dependencies": {
-    "@tobyg74/tiktok-api-dl": "^1.0.2-new",
     "axios": "^1.4.0",
     "fs": "^0.0.1-security",
     "openai": "^3.3.0",
