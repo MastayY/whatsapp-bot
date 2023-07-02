@@ -1,4 +1,4 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia, Contact } = require('whatsapp-web.js');
 const { Configuration, OpenAIApi } = require("openai");
 const script = require("./src/file/script.js")
 const qrcode = require('qrcode-terminal');
@@ -6,6 +6,18 @@ const fs = require('fs');
 const axios = require('axios');
 const ytmp3 = require('ytmp3-scrap');
 const config = require('./config.js');
+const { runtime, query, tanggal, getGreeting } = require('./lib/function.js');
+const {
+    getLimitInfo,
+    incrementLimitUsage,
+    setDailyLimit,
+    addPremiumUser,
+    removePremiumUser,
+    addBotOwner,
+    removeBotOwner,
+    isPremiumUser,
+    isBotOwner,
+} = require('./lib/db.js');
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -21,6 +33,43 @@ const openai = new OpenAIApi(configuration);
 
 const prefixList = ["/", "!", "#", "$"];
 let prefix = '!';
+let limitreached = false;
+const baseMenu = `\n╔════《 _*INFO*_ 》════⊱
+╠➤ Bot Name    : *${config.BOT_NAME}*
+╠➤ Version     : *${config.BOT_VER}*
+╠➤ Prefix      : *${prefix}*
+╠➤ Owner       : *${config.BOT_OWNER}*
+╚═════════════⊱
+╔═══《 _SOSMED_ 》═══⊱
+╠➤ Instagram   : ${config.ig}
+╠➤ Youtube     : ${config.yt}
+╠➤ Github      : ${config.github}
+╠➤ Twitter     : ${config.twitter}
+╚═════════════⊱
+╔══《 _COMMAND_ 》══⊱
+╠➤ ${prefix}halo
+╠➤ ${prefix}menu
+╠➤ ${prefix}sticker
+╠➤ ${prefix}ask
+╠➤ ${prefix}menfes
+╠➤ ${prefix}tiktok
+╠➤ ${prefix}ytmp3
+╠➤ ${prefix}urlshort
+╠➤ ${prefix}cimage1
+╠➤ ${prefix}cimage2 (premium user)
+╠➤ ${prefix}mylimits
+╚═════════════⊱
+╔═══《 𝑹𝑼𝑵𝑻𝑰𝑴𝑬 》═══⊱
+╠❏ _*${runtime(process.uptime())}*_
+╚════[ ᄃﾘﾑﾑ ]══════⊱\n`
+const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱
+╠➤ ${prefix}addowner
+╠➤ ${prefix}addpremium
+╠➤ ${prefix}removepremium
+╠➤ ${prefix}removeowner
+╠➤ ${prefix}listowner
+╠➤ ${prefix}listpremium
+╚═════════════⊱`
 
 client.on('qr', (qr) => {
     // Tampilkan QR code di terminal
@@ -44,20 +93,6 @@ client.on('disconnected', (reason) => {
     console.log(`Client disconnected: ${reason}`);
 });
 
-// // Handle termination signal (SIGINT)
-// process.on('SIGINT', async () => {
-//     // Change the profile status to "Offline"
-//     try {
-//         await client.setStatus(`Status: Offline | ${config.BOT_NAME} ${config.BOT_VER} | Author: ${config.BOT_OWNER}`);
-//         console.log('Profile status successfully updated');
-//     } catch (error) {
-//         console.error('Failed to update profile status:', error);
-//     }
-//     // Destroy the client and exit the process
-//     client.destroy();
-//     process.exit(0);
-// });
-
 client.on('authenticated', () => {
     console.log('AUTHENTICATED');
 });
@@ -67,22 +102,64 @@ client.on('auth_failure', msg => {
     console.error('AUTHENTICATION FAILURE', msg);
 });
 
+function checkLimit(userId) {
+    const limitInfo = getLimitInfo(userId);
+
+    if (!limitInfo) {
+      // Jika belum ada informasi limit, tambahkan ke database
+        setDailyLimit(userId, 20);
+    } else if (limitInfo.used >= limitInfo.limit && !isBotOwner(userId)) {
+        limitreached = true;
+    } else {
+      // Jika limit masih tersedia atau user premium/owner bot, tambahkan penggunaan limit
+        incrementLimitUsage(userId);
+    }
+}
+
 client.on('message', async (msg) => {
     try {
         if (msg.body.toLowerCase() === `${prefix}halo`) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             msg.reply(`Halo! Aku adalah sebuah bot Whatsapp yang dibuat oleh ${config.BOT_OWNER}.`);
             console.log(`${msg.from} Use command ${prefix}halo. Status : Success`);
-        } else if(msg.body.toLowerCase() === `${prefix}help` || msg.body.toLowerCase() === `${prefix}menu`) {
-            const media = await MessageMedia.fromUrl("https://i.imgur.com/nFsn61p.png");
-            const menus = `|--------- [ *INFO* ] ---------|\n*Bot Name\t:* _${config.BOT_NAME}_\n*Bot Version\t:* _${config.BOT_VER}_\n*Bot Prefix\t:* _"${prefix}"_\n*Bot Owner\t:* _${config.BOT_OWNER}_\n---------------------------\n\n|===== [ *COMMAND* ] =====|\n=> _*${prefix}halo*_\n=> _*${prefix}help*_\n=> _*${prefix}sticker*_\n=> _*${prefix}ask <question>*_\n=> _*${prefix}menfes|<nomor telepon>|<nama pengirim>|<pesan>*_\n=> _*${prefix}tiktok <type> <link url tiktok>*_\n=> _*${prefix}ytmp3 <url video>*_\n=> _*${prefix}urlshort <url>*_\n=> _*${prefix}createimage <deskripsi teks>*_\n\n_Note : masukkan parameter tanpa simbol "< >"_`
 
-            client.sendMessage(msg.from, media, {
-                caption: menus,
-            });
+        } else if(msg.body.toLowerCase() === `${prefix}help` || msg.body.toLowerCase() === `${prefix}menu`) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+            const media = await MessageMedia.fromUrl("https://i.imgur.com/nFsn61p.png");
+            const pushName = await msg.getContact();
+            const rawDateTime = new Date();
+            const dateTime = tanggal(rawDateTime);
+            const currentTime = new Date().toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
+            const menus = `Hai kak _*${pushName.pushname}*_, ${getGreeting()}👋.\n\nHari, tanggal : *${dateTime}*\nJam : *${currentTime}*\n${baseMenu}`;
+
+            if(isBotOwner(msg.from)) {
+                client.sendMessage(msg.from, media, {
+                    caption: menus + admMenu,
+                });
+            } else {
+                client.sendMessage(msg.from, media, {
+                    caption: menus,
+                });
+            }
 
             console.log(`${msg.from} Use command ${prefix}help. Status : Success`);
 
         } else if(msg.body.startsWith(`${prefix}sticker`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             if (msg.type === 'image') {
                 const media = await msg.downloadMedia() .catch((err) => {
                     console.error(err);
@@ -95,11 +172,18 @@ client.on('message', async (msg) => {
                     stickerName: "Gweh Anime by Mastay",
                 });
                 console.log(`${msg.from} Use command ${prefix}sticker. Status : Success`);
+
             } else {
                 console.log(`${msg.from} Use command ${prefix}sticker. Status : Invalid Format Type`);
                 msg.reply(`Format salah, pastikan kamu mengirim gambar dengan caption ${prefix}sticker.`)
             }
         } else if (msg.body.startsWith(`${prefix}ask`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             const params = msg.body.split(" ");
 
             if(params.length === 1) {
@@ -108,27 +192,39 @@ client.on('message', async (msg) => {
                 return;
             }
 
-            const question = params.slice(1).join(' ');
-            const response = await openai.createCompletion({
-                model: "text-davinci-003",
-                prompt: `${question}\n\nBot:`,
-                temperature: 0.9,
-                max_tokens: 1000,
-                top_p: 1,
-                frequency_penalty: 0,
-                presence_penalty: 0.6,
-                stop: ["Bot:"],
-            });
+            try {
+                const question = params.slice(1).join(' ');
+                const response = await openai.createCompletion({
+                    model: "text-davinci-003",
+                    prompt: `${question}\n\nBot:`,
+                    temperature: 0.9,
+                    max_tokens: 1000,
+                    top_p: 1,
+                    frequency_penalty: 0,
+                    presence_penalty: 0.6,
+                    stop: ["Bot:"],
+                });
 
-            msg.reply(response.data.choices[0].text)
-            console.log(`${msg.from} Use command ${prefix}ask. Status : Success`);
+                msg.reply(response.data.choices[0].text)
+                console.log(`${msg.from} Use command ${prefix}ask. Status : Success`);
 
-        } else if(msg.body.startsWith(`${prefix}createimage`)) {
+            } catch (err) {
+                msg.reply('Terjadi kesalahan. Jika terus seperti ini silahkan hubungi developer')
+                console.error(err);
+            }
+
+        } else if(msg.body.startsWith(`${prefix}cimage1`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan limit menjadi 150")
+            }
+
             const params = msg.body.split(" ");
 
             if(params.length === 1) {
-                console.log(`${msg.from} Use command ${prefix}createimage. Status : Invalid Parameter`);
-                return msg.reply(`Format salah, gunakan ${prefix}createimage <deskripsi gambar>`);
+                console.log(`${msg.from} Use command ${prefix}cimage1. Status : Invalid Parameter`);
+                return msg.reply(`Format salah, gunakan ${prefix}cimage1 <deskripsi gambar>`);
             }
 
             const descImage = params.slice(1).join(' ');
@@ -143,14 +239,21 @@ client.on('message', async (msg) => {
                 client.sendMessage(msg.from, media, {
                     caption: `Hasil gambar dengan deskripsi _*${descImage}*_`,
                 });
-                console.log(`${msg.from} Use command ${prefix}createimage. Status : Success`);
+                console.log(`${msg.from} Use command ${prefix}cimage1. Status : Success`);
+
             } catch (err) {
                 msg.reply("Gagal memproses gambar, coba lagi nanti.\n _Jika masalah terus berulang silahkan hubungi Developer_");
-                console.log(`${msg.from} Use command ${prefix}createimage. Status : Error`);
+                console.log(`${msg.from} Use command ${prefix}cimage1. Status : Error`);
                 console.error(err);
             }
 
         } else if (msg.body.startsWith(`${prefix}menfes`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             const params = msg.body.split("|");
 
             if (params.length !== 4) {
@@ -158,8 +261,8 @@ client.on('message', async (msg) => {
                 msg.reply(`Format salah, gunakan ${prefix}menfes|<nomor telepon>|<nama pengirim>|<pesan>`);
                 return;
             }
-
             const targetNumber = `${params[1].trim()}@c.us`;
+
             const senderName = params[2].trim();
             const message = params[3].trim();
 
@@ -168,11 +271,15 @@ client.on('message', async (msg) => {
             await client.sendMessage(targetNumber, formatedMessage) .then(() => {
                 msg.reply("Pesan berhasil terkirim")
                 console.log(`${msg.from} Use command ${prefix}menfes. Status : Success`);
+
             }) .catch((err) => {
                 msg.reply('Pesan gagal terkirim, silahkan kontak developer untuk melapor');
                 console.log(err);
             });
         } else if (msg.body.startsWith(`${prefix}kill`)) {
+            if(!isBotOwner(msg.from)) {
+                return msg.reply("Hanya bisa digunakan oleh admin")
+            }
             // Perbarui status ke offline
             client.setStatus(`Status: Offline | ${config.BOT_NAME} ${config.BOT_VER} | Author : ${config.BOT_OWNER}`)
             .then(() => {
@@ -187,6 +294,12 @@ client.on('message', async (msg) => {
             msg.reply('Bot telah dimatikan dan status diubah ke offline.');
             // Matikan bot
         } else if (msg.body.startsWith('!tiktok')) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             const params = msg.body.split(" ");
             if (params.length !== 3) {
                 console.log(`${msg.from} Use command ${prefix}tiktok. Status : Invalid Parameter`);
@@ -212,6 +325,7 @@ client.on('message', async (msg) => {
                             
                         });
                         console.log(`${msg.from} Use command ${prefix}tiktok. Status : Success`);
+
                     } catch (error) {
                         console.error(error);
                         msg.reply('Gagal mengunduh video TikTok, Pastikan link yang anda masukkan benar');
@@ -224,6 +338,12 @@ client.on('message', async (msg) => {
                     break;
             }
         } else if(msg.body.startsWith(`${prefix}ytmp3`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             const params = msg.body.split(" ");
 
             if (params.length !== 2) {
@@ -268,6 +388,12 @@ client.on('message', async (msg) => {
                 msg.reply("Gagal mendownload audio");
             }
         } else if (msg.body.startsWith(`${prefix}urlshort`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
             const params = msg.body.split(" ");
 
             if (params.length !== 2) {
@@ -282,6 +408,7 @@ client.on('message', async (msg) => {
                 if (shortenedUrl) {
                     msg.reply(`Berhasil membuat link yang sudah dipendekkan\n${shortenedUrl}`);
                     console.log(`${msg.from} Use command ${prefix}urlshort. Status: Success`);
+
                 } else {
                     msg.reply("Url tidak valid atau gagal terhubung ke url")
                     console.log(`${msg.from} Use command ${prefix}urlshort. Status: Invalid URL`);
@@ -290,16 +417,95 @@ client.on('message', async (msg) => {
                 msg.reply("Gagal mengakses API");
                 console.log(`${msg.from} Use command ${prefix}urlshort. Status: Failed`, error);
             }
+        } else if(msg.body.startsWith(`${prefix}mylimits`)) {
+            const limit = getLimitInfo(msg.from);
+            const maxLimit = limit.limit;
+            const remainLimit = maxLimit - limit.used;
+            const userStatus = isPremiumUser(msg.from);
+            msg.reply(`╭┈┈┈┈┈[ *USER INFO* ]\n├ Premium User : ${userStatus}\n├ Max Limit : *${maxLimit}*\n├ Sisa Limit : *${remainLimit}*\n╰┈┈┈┈┈┈┈┈┈┈┈┈\nKamu bisa membeli premium user dengan cara klik link dibawah ini\nhttps://bit.ly/3NR9bSD`);
+        } else if (msg.body.startsWith(`${prefix}cimage2`)) {
+            if (!isPremiumUser || !isBotOwner) {
+              return msg.reply(`Fitur ini khusus pengguna premium, kamu bisa gunakan versi free user dari image generation yaitu *${prefix}cimage1*`);
+            }
+        
+            checkLimit(msg.from);
+    
+            if (limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba lagi besok");
+            }
+
+            const params = msg.body.split(" ");
+
+            if (params.length === 1) {
+                return msg.reply(`Gunakan ${prefix}cimage2 <deskripsi gambar>`);
+            }
+
+            const desc = params.slice(1).join(" ");
+            const result = await query({ "inputs": `${desc}` });
+            fs.writeFile('./src/file/result.jpg', result, async (error) => {
+                if (error) {
+                    return console.error('Gagal menyimpan file:', error);
+                }
+                try {
+                    const media = MessageMedia.fromFilePath('./src/file/result.jpg');
+
+                    await client.sendMessage(msg.from, media, {
+                      caption: `Sukses membuat gambar dengan deskripsi *${desc}*`
+                    });
+                    // Hapus file gambar setelah berhasil dikirim
+                    fs.unlink('./src/file/result.jpg', (err) => {
+                        if (err) {
+                            return console.error('Gagal menghapus file:', err);
+                        }
+                    });
+                    console.log(`${msg.from} Use command ${prefix}cimage2. Status: Success`);
+                } catch (err) {
+                    msg.reply('Gagal membuat gambar!');
+                    console.log(`${msg.from} Use command ${prefix}urlshort. Status: Failed`, error);
+                }
+            });
+        }          
+        
+        // -------------------------- Owner Command ------------------------
+
+        else if(msg.body.startsWith(`${prefix}addowner`)) {
+            if(!isBotOwner(msg.from)) {
+                console.log(`${msg.from} Use command ${prefix}addowner. Status: No Permission`);
+                return msg.reply("Kamu tidak memiliki izin untuk menggunakan command ini");
+            }
+
+            const params = msg.body.split(" ");
+
+            if(params.length !== 2) {
+                console.log(`${msg.from} Use command ${prefix}addowner. Status: Invalid Parameter`);
+                return msg.reply(`Usage : ${prefix}addowner <phone number>`);
+            } 
+            const number = `${params[1].trim()}@c.us`;
+
+            addBotOwner(number);
+            setDailyLimit(number, 10000000);
+            console.log(`${msg.from} Use command ${prefix}addowner. Status: Success`);
+
+        } else if(msg.body.startsWith(`${prefix}addpremium`)) {
+            if(!isBotOwner(msg.from)) {
+                console.log(`${msg.from} Use command ${prefix}addowner. Status: No Permission`);
+                return msg.reply("Kamu tidak memiliki izin untuk menggunakan command ini");
+            }
+
+            const params = msg.body.split(" ");
+
+            if(params.length !== 2) {
+                console.log(`${msg.from} Use command ${prefix}addpremium. Status: Invalid Parameter`);
+                return msg.reply(`Usage : ${prefix}addpremium <phone number>`);
+            } 
+            const number = `${params[1].trim()}@c.us`;
+
+            addPremiumUser(number);
+            setDailyLimit(number, 10000000);
+            console.log(`${msg.from} Use command ${prefix}addowner. Status: Success`);
+
         } else {
             msg.reply(`Command _*${msg.body}*_ tidak tersedia, silahkan gunakan _*${prefix}help*_ atau _*${prefix}menu*_ untuk melihat semua command yang tersedia!`);
-            // axios.get(`https://daniapi.my.id/api/artificial-intelligence/simsimi?text=${msg.body}&lang=id&keys=mastaycuy`) 
-            // .then(response => {
-            //     client.sendMessage(msg.from, response.data.data.answer);
-            // })
-            // .catch(error => {
-            //     console.log(error);
-            //     msg.reply('Maaf, ada kesalahan dalam memproses permintaan Anda.');
-            // });
         }
     } catch (err) {
         console.error(err);
