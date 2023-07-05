@@ -58,10 +58,8 @@ const baseMenu = `\n╔════《 _*INFO*_ 》════⊱
 ╠➤ ${prefix}cimage1
 ╠➤ ${prefix}cimage2 (premium user)
 ╠➤ ${prefix}mylimits
-╚═════════════⊱
-╔═══《 𝑹𝑼𝑵𝑻𝑰𝑴𝑬 》═══⊱
-╠❏ _*${runtime(process.uptime())}*_
-╚════[ ᄃﾘﾑﾑ ]══════⊱\n`
+╚═════════════⊱`;
+
 const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱
 ╠➤ ${prefix}addowner
 ╠➤ ${prefix}addpremium
@@ -139,7 +137,7 @@ client.on('message', async (msg) => {
             const rawDateTime = new Date();
             const dateTime = tanggal(rawDateTime);
             const currentTime = new Date().toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
-            const menus = `Hai kak _*${pushName.pushname}*_, ${getGreeting()}👋.\n\nHari, tanggal : *${dateTime}*\nJam : *${currentTime}*\n${baseMenu}`;
+            const menus = `Hai kak _*${pushName.pushname}*_, ${getGreeting()}👋. Namaku *${config.BOT_NAME}*\n\nHari, tanggal : *${dateTime}*\nJam : *${currentTime}*\n${baseMenu}\n╔═══《 𝑹𝑼𝑵𝑻𝑰𝑴𝑬 》═══⊱\n╠❏ _*${runtime(process.uptime())}*_\n╚════[ ᄃﾘﾑﾑ ]══════⊱\n`;
 
             if(isBotOwner(msg.from)) {
                 client.sendMessage(msg.from, media, {
@@ -418,10 +416,10 @@ client.on('message', async (msg) => {
                 console.log(`${msg.from} Use command ${prefix}urlshort. Status: Failed`, error);
             }
         } else if(msg.body.startsWith(`${prefix}mylimits`)) {
-            const limit = getLimitInfo(msg.from);
-            const maxLimit = limit.limit;
-            const remainLimit = maxLimit - limit.used;
-            const userStatus = isPremiumUser(msg.from);
+            const limit = isPremiumUser(msg.from) || isBotOwner(msg.from) ? "Unlimited" : getLimitInfo(msg.from);
+            const maxLimit = isPremiumUser(msg.from) || isBotOwner(msg.from) ? "Unlimited" : limit.limit;
+            const remainLimit = isPremiumUser(msg.from) || isBotOwner(msg.from) ? "Unlimited" : maxLimit - limit.used;
+            const userStatus = isPremiumUser(msg.from) ? 'Premium User' : 'Free User';
             msg.reply(`╭┈┈┈┈┈[ *USER INFO* ]\n├ Premium User : ${userStatus}\n├ Max Limit : *${maxLimit}*\n├ Sisa Limit : *${remainLimit}*\n╰┈┈┈┈┈┈┈┈┈┈┈┈\nKamu bisa membeli premium user dengan cara klik link dibawah ini\nhttps://bit.ly/3NR9bSD`);
         } else if (msg.body.startsWith(`${prefix}cimage2`)) {
             if (!isPremiumUser || !isBotOwner) {
@@ -484,6 +482,8 @@ client.on('message', async (msg) => {
 
             addBotOwner(number);
             setDailyLimit(number, 10000000);
+            msg.reply(`Berhasil menambahkan ${number} ke daftar owner`);
+            client.sendMessage(number, `Selamat status anda telah diubah menjadi owner!\nSekarang kamu bisa menggunakan command khusus owner, gunakan *${prefix}menu* untuk melihat command yang tersedia.`)
             console.log(`${msg.from} Use command ${prefix}addowner. Status: Success`);
 
         } else if(msg.body.startsWith(`${prefix}addpremium`)) {
@@ -502,7 +502,9 @@ client.on('message', async (msg) => {
 
             addPremiumUser(number);
             setDailyLimit(number, 10000000);
-            console.log(`${msg.from} Use command ${prefix}addowner. Status: Success`);
+            msg.reply(`Berhasil menambahkan ${number} ke daftar premium`);
+            client.sendMessage(number, "Selamat status premium user anda sudah aktif!\nSekarang kamu bisa menggunakan command bot ini tanpa batas");
+            console.log(`${msg.from} Use command ${prefix}addpremium. Status: Success`);
 
         } else {
             msg.reply(`Command _*${msg.body}*_ tidak tersedia, silahkan gunakan _*${prefix}help*_ atau _*${prefix}menu*_ untuk melihat semua command yang tersedia!`);
