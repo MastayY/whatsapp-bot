@@ -3,8 +3,10 @@ const { Configuration, OpenAIApi } = require("openai");
 const script = require("./src/file/script.js")
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const ytmp3 = require('ytmp3-scrap');
+const ffmpeg = require('fluent-ffmpeg');
 const config = require('./config.js');
 const { runtime, query, tanggal, getGreeting } = require('./lib/function.js');
 const {
@@ -34,40 +36,6 @@ const openai = new OpenAIApi(configuration);
 const prefixList = ["/", "!", "#", "$"];
 let prefix = '!';
 let limitreached = false;
-const baseMenu = `\n╔════《 _*INFO*_ 》════⊱
-╠➤ Bot Name    : *${config.BOT_NAME}*
-╠➤ Version     : *${config.BOT_VER}*
-╠➤ Prefix      : *${prefix}*
-╠➤ Owner       : *${config.BOT_OWNER}*
-╚═════════════⊱
-╔═══《 _SOSMED_ 》═══⊱
-╠➤ Instagram   : ${config.ig}
-╠➤ Youtube     : ${config.yt}
-╠➤ Github      : ${config.github}
-╠➤ Twitter     : ${config.twitter}
-╚═════════════⊱
-╔══《 _COMMAND_ 》══⊱
-╠➤ ${prefix}halo
-╠➤ ${prefix}menu
-╠➤ ${prefix}sticker
-╠➤ ${prefix}ask
-╠➤ ${prefix}menfes
-╠➤ ${prefix}tiktok
-╠➤ ${prefix}ytmp3
-╠➤ ${prefix}urlshort
-╠➤ ${prefix}cimage1
-╠➤ ${prefix}cimage2 (premium user)
-╠➤ ${prefix}mylimits
-╚═════════════⊱`;
-
-const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱
-╠➤ ${prefix}addowner
-╠➤ ${prefix}addpremium
-╠➤ ${prefix}removepremium
-╠➤ ${prefix}removeowner
-╠➤ ${prefix}listowner
-╠➤ ${prefix}listpremium
-╚═════════════⊱`
 
 client.on('qr', (qr) => {
     // Tampilkan QR code di terminal
@@ -137,6 +105,11 @@ client.on('message', async (msg) => {
             const rawDateTime = new Date();
             const dateTime = tanggal(rawDateTime);
             const currentTime = new Date().toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
+
+            const baseMenu = `\n╔════《 _*INFO*_ 》════⊱\n╠➤ Bot Name    : *${config.BOT_NAME}*\n╠➤ Version     : *${config.BOT_VER}*\n╠➤ Prefix      : *${prefix}*\n╠➤ Owner       : *${config.BOT_OWNER}*\n╚═════════════⊱\n╔═══《 _SOSMED_ 》═══⊱\n╠➤ Instagram   : ${config.ig}\n╠➤ Youtube     : ${config.yt}\n╠➤ Github      : ${config.github}\n╠➤ Twitter     : ${config.twitter}\n╚═════════════⊱\n╔══《 _COMMAND_ 》══⊱\n╠➤ ${prefix}halo\n╠➤ ${prefix}menu\n╠➤ ${prefix}sticker\n╠➤ ${prefix}ask\n╠➤ ${prefix}menfes\n╠➤ ${prefix}tiktok\n╠➤ ${prefix}ytmp3\n╠➤ ${prefix}urlshort\n╠➤ ${prefix}cimage1\n╠➤ ${prefix}cimage2 (premium user)\n╠➤ ${prefix}mylimits\n╚═════════════⊱`;
+
+            const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱\n╠➤ ${prefix}addowner\n╠➤ ${prefix}addpremium\n╠➤ ${prefix}removepremium\n╠➤ ${prefix}removeowner\n╠➤ ${prefix}listowner\n╠➤ ${prefix}listpremium\n╠➤ ${prefix}kill\n╚═════════════⊱`
+
             const menus = `Hai kak _*${pushName.pushname}*_, ${getGreeting()}👋. Namaku *${config.BOT_NAME}*\n\nHari, tanggal : *${dateTime}*\nJam : *${currentTime}*\n${baseMenu}\n╔═══《 𝑹𝑼𝑵𝑻𝑰𝑴𝑬 》═══⊱\n╠❏ _*${runtime(process.uptime())}*_\n╚════[ ᄃﾘﾑﾑ ]══════⊱\n`;
 
             if(isBotOwner(msg.from)) {
@@ -158,6 +131,10 @@ client.on('message', async (msg) => {
                 return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
             }
 
+            if(!msg.hasMedia) {
+                return msg.reply(`Format salah, pastikan kamu mengirim gambar dengan caption ${prefix}sticker.`);
+            }
+
             if (msg.type === 'image') {
                 const media = await msg.downloadMedia() .catch((err) => {
                     console.error(err);
@@ -171,6 +148,49 @@ client.on('message', async (msg) => {
                 });
                 console.log(`${msg.from} Use command ${prefix}sticker. Status : Success`);
 
+            } else if (msg.type === 'video') {
+                const media = await msg.downloadMedia();
+                const filePath = path.join(__dirname, 'src/file/result/sticker.mp4');
+            
+                // Simpan media ke file sementara
+                fs.writeFileSync(filePath, media.data, 'base64');
+
+                // Periksa durasi video menggunakan ffprobe
+                ffmpeg.ffprobe(filePath, (err, metadata) => {
+                    if (err) {
+                        console.error('Terjadi kesalahan saat mengambil metadata video:', err);
+                        return fs.unlinkSync(filePath); // Hapus file sementara jika terjadi kesalahan
+                    }
+
+                    const duration = metadata.format.duration;
+                    console.log(`Durasi video: ${runtime(duration)}`);
+
+                    const media = MessageMedia.fromFilePath('src/file/result/sticker.mp4')
+
+                    if (duration < 8) {
+                        // Kirim file sebagai sticker
+                        client.sendMessage(msg.from, media, {
+                            sendMediaAsSticker: true,
+                            stickerAuthor: "Mztay Bot",
+                            stickerName: "Gweh Anime by Mastay"
+                        })
+                        .then(() => {
+                            console.log(`${msg.from} Use command ${prefix}sticker. Status: Success`);
+
+                            // Hapus file setelah berhasil terkirim
+                            fs.unlinkSync(filePath);
+                        })
+                        .catch((error) => {
+                            console.error('Terjadi kesalahan saat mengirim sticker:', error);
+                            fs.unlinkSync(filePath); // Hapus file jika terjadi kesalahan saat mengirim
+                        });
+                    } else {
+                        msg.reply(`Durasi maksimal adalah 7 detik.\nDurasi video ini: ${runtime(duration)}`);
+
+                        // Hapus file sementara karena durasi terlalu panjang
+                        fs.unlinkSync(filePath);
+                    }
+                });
             } else {
                 console.log(`${msg.from} Use command ${prefix}sticker. Status : Invalid Format Type`);
                 msg.reply(`Format salah, pastikan kamu mengirim gambar dengan caption ${prefix}sticker.`)
@@ -259,6 +279,13 @@ client.on('message', async (msg) => {
                 msg.reply(`Format salah, gunakan ${prefix}menfes|<nomor telepon>|<nama pengirim>|<pesan>`);
                 return;
             }
+            
+            const isRegisteredNumber = await client.isRegisteredUser(params[1].trim());
+
+            if(!isRegisteredNumber) {
+                return msg.reply("Nomor tidak terdaftar di whatsapp. Pastikan kamu menulis nomor dengan benar\nContoh : 6285643094917");
+            }
+            
             const targetNumber = `${params[1].trim()}@c.us`;
 
             const senderName = params[2].trim();
@@ -274,23 +301,6 @@ client.on('message', async (msg) => {
                 msg.reply('Pesan gagal terkirim, silahkan kontak developer untuk melapor');
                 console.log(err);
             });
-        } else if (msg.body.startsWith(`${prefix}kill`)) {
-            if(!isBotOwner(msg.from)) {
-                return msg.reply("Hanya bisa digunakan oleh admin")
-            }
-            // Perbarui status ke offline
-            client.setStatus(`Status: Offline | ${config.BOT_NAME} ${config.BOT_VER} | Author : ${config.BOT_OWNER}`)
-            .then(() => {
-                console.log('Info profil berhasil diubah');
-                client.destroy();
-            })
-            .catch((error) => {
-                console.error('Gagal mengubah Info profil:', error);
-            });
-        
-            // Kirim balasan
-            msg.reply('Bot telah dimatikan dan status diubah ke offline.');
-            // Matikan bot
         } else if (msg.body.startsWith('!tiktok')) {
             checkLimit(msg.from);
 
@@ -416,11 +426,11 @@ client.on('message', async (msg) => {
                 console.log(`${msg.from} Use command ${prefix}urlshort. Status: Failed`, error);
             }
         } else if(msg.body.startsWith(`${prefix}mylimits`)) {
-            const limit = isPremiumUser(msg.from) || isBotOwner(msg.from) ? "Unlimited" : getLimitInfo(msg.from);
-            const maxLimit = isPremiumUser(msg.from) || isBotOwner(msg.from) ? "Unlimited" : limit.limit;
-            const remainLimit = isPremiumUser(msg.from) || isBotOwner(msg.from) ? "Unlimited" : maxLimit - limit.used;
+            const limit = isBotOwner(msg.from) ? "Unlimited" : getLimitInfo(msg.from);
+            const maxLimit = isBotOwner(msg.from) ? "Unlimited" : limit.limit;
+            const remainLimit = isBotOwner(msg.from) ? "Unlimited" : maxLimit - limit.used;
             const userStatus = isPremiumUser(msg.from) ? 'Premium User' : 'Free User';
-            msg.reply(`╭┈┈┈┈┈[ *USER INFO* ]\n├ Premium User : ${userStatus}\n├ Max Limit : *${maxLimit}*\n├ Sisa Limit : *${remainLimit}*\n╰┈┈┈┈┈┈┈┈┈┈┈┈\nKamu bisa membeli premium user dengan cara klik link dibawah ini\nhttps://bit.ly/3NR9bSD`);
+            msg.reply(`╭┈┈┈┈┈[ *USER INFO* ]\n├ Status : _${userStatus}_\n├ Max Limit : _${maxLimit}_\n├ Sisa Limit : _${remainLimit}_\n╰┈┈┈┈┈┈┈┈┈┈┈┈\nKamu bisa membeli premium user dengan cara klik link dibawah ini\nhttps://bit.ly/3NR9bSD`);
         } else if (msg.body.startsWith(`${prefix}cimage2`)) {
             if (!isPremiumUser || !isBotOwner) {
               return msg.reply(`Fitur ini khusus pengguna premium, kamu bisa gunakan versi free user dari image generation yaitu *${prefix}cimage1*`);
@@ -465,8 +475,24 @@ client.on('message', async (msg) => {
         }          
         
         // -------------------------- Owner Command ------------------------
-
-        else if(msg.body.startsWith(`${prefix}addowner`)) {
+        else if (msg.body.startsWith(`${prefix}kill`)) {
+            if(!isBotOwner(msg.from)) {
+                return msg.reply("Hanya bisa digunakan oleh admin")
+            }
+            // Perbarui status ke offline
+            client.setStatus(`Status: Offline | ${config.BOT_NAME} ${config.BOT_VER} | Author : ${config.BOT_OWNER}`)
+            .then(() => {
+                console.log('Info profil berhasil diubah');
+                client.destroy();
+            })
+            .catch((error) => {
+                console.error('Gagal mengubah Info profil:', error);
+            });
+        
+            // Kirim balasan
+            msg.reply('Bot telah dimatikan dan status diubah ke offline.');
+            // Matikan bot
+        } else if(msg.body.startsWith(`${prefix}addowner`)) {
             if(!isBotOwner(msg.from)) {
                 console.log(`${msg.from} Use command ${prefix}addowner. Status: No Permission`);
                 return msg.reply("Kamu tidak memiliki izin untuk menggunakan command ini");
@@ -478,6 +504,13 @@ client.on('message', async (msg) => {
                 console.log(`${msg.from} Use command ${prefix}addowner. Status: Invalid Parameter`);
                 return msg.reply(`Usage : ${prefix}addowner <phone number>`);
             } 
+
+            const isRegisteredNumber = await client.isRegisteredUser(params[1].trim());
+
+            if(!isRegisteredNumber) {
+                return msg.reply("Nomor tidak terdaftar di whatsapp. Pastikan kamu menulis nomor dengan benar\nContoh : 6285643094917");
+            }
+
             const number = `${params[1].trim()}@c.us`;
 
             addBotOwner(number);
@@ -498,6 +531,13 @@ client.on('message', async (msg) => {
                 console.log(`${msg.from} Use command ${prefix}addpremium. Status: Invalid Parameter`);
                 return msg.reply(`Usage : ${prefix}addpremium <phone number>`);
             } 
+
+            const isRegisteredNumber = await client.isRegisteredUser(params[1].trim());
+
+            if(!isRegisteredNumber) {
+                return msg.reply("Nomor tidak terdaftar di whatsapp. Pastikan kamu menulis nomor dengan benar\nContoh : 6285643094917");
+            }
+
             const number = `${params[1].trim()}@c.us`;
 
             addPremiumUser(number);
@@ -506,6 +546,21 @@ client.on('message', async (msg) => {
             client.sendMessage(number, "Selamat status premium user anda sudah aktif!\nSekarang kamu bisa menggunakan command bot ini tanpa batas");
             console.log(`${msg.from} Use command ${prefix}addpremium. Status: Success`);
 
+        } else if (msg.body.startsWith(`${prefix}changeprefix`)) {
+            const params = msg.body.split(" ");
+        
+            if (params.length !== 2) {
+                return msg.reply(`Gunakan ${prefix}changeprefix <prefix>\nprefix list : !, #, /, $`);
+            }
+        
+            const newPrefix = params[1].trim();
+        
+            if (prefixList.includes(newPrefix)) {
+                prefix = newPrefix;
+                return msg.reply(`Prefix berhasil diganti menjadi ${newPrefix}`);
+            } else {
+                return msg.reply(`Gunakan prefix dari list dibawah\nprefix list : !, #, /, $`);
+            }
         } else {
             msg.reply(`Command _*${msg.body}*_ tidak tersedia, silahkan gunakan _*${prefix}help*_ atau _*${prefix}menu*_ untuk melihat semua command yang tersedia!`);
         }
