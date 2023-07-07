@@ -8,7 +8,7 @@ const axios = require('axios');
 const ytmp3 = require('ytmp3-scrap');
 const ffmpeg = require('fluent-ffmpeg');
 const config = require('./config.js');
-const { runtime, query, tanggal, getGreeting } = require('./lib/function.js');
+const { runtime, query, tanggal, getGreeting, downloadYtVideo } = require('./lib/function.js');
 const {
     getLimitInfo,
     incrementLimitUsage,
@@ -19,6 +19,8 @@ const {
     removeBotOwner,
     isPremiumUser,
     isBotOwner,
+    getOwnerLists,
+    getPremiumUsers
 } = require('./lib/db.js');
 
 const client = new Client({
@@ -29,7 +31,7 @@ const client = new Client({
 });
 
 const configuration = new Configuration({
-    apiKey: "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",
+    apiKey: "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",
 });
 const openai = new OpenAIApi(configuration);
 
@@ -106,9 +108,9 @@ client.on('message', async (msg) => {
             const dateTime = tanggal(rawDateTime);
             const currentTime = new Date().toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
 
-            const baseMenu = `\n╔════《 _*INFO*_ 》════⊱\n╠➤ Bot Name    : *${config.BOT_NAME}*\n╠➤ Version     : *${config.BOT_VER}*\n╠➤ Prefix      : *${prefix}*\n╠➤ Owner       : *${config.BOT_OWNER}*\n╚═════════════⊱\n╔═══《 _SOSMED_ 》═══⊱\n╠➤ Instagram   : ${config.ig}\n╠➤ Youtube     : ${config.yt}\n╠➤ Github      : ${config.github}\n╠➤ Twitter     : ${config.twitter}\n╚═════════════⊱\n╔══《 _COMMAND_ 》══⊱\n╠➤ ${prefix}halo\n╠➤ ${prefix}menu\n╠➤ ${prefix}sticker\n╠➤ ${prefix}ask\n╠➤ ${prefix}menfes\n╠➤ ${prefix}tiktok\n╠➤ ${prefix}ytmp3\n╠➤ ${prefix}urlshort\n╠➤ ${prefix}cimage1\n╠➤ ${prefix}cimage2 (premium user)\n╠➤ ${prefix}mylimits\n╚═════════════⊱`;
+            const baseMenu = `\n╔════《 _*INFO*_ 》════⊱\n╠➤ Bot Name    : *${config.BOT_NAME}*\n╠➤ Version     : *${config.BOT_VER}*\n╠➤ Prefix      : *${prefix}*\n╠➤ Owner       : *${config.BOT_OWNER}*\n╚═════════════⊱\n╔═══《 _SOSMED_ 》═══⊱\n╠➤ Instagram   : ${config.ig}\n╠➤ Youtube     : ${config.yt}\n╠➤ Github      : ${config.github}\n╠➤ Twitter     : ${config.twitter}\n╚═════════════⊱\n╔══《 _COMMAND_ 》══⊱\n╠➤ ${prefix}halo\n╠➤ ${prefix}menu\n╠➤ ${prefix}sticker\n╠➤ ${prefix}ask\n╠➤ ${prefix}menfes\n╠➤ ${prefix}cimage1\n╠➤ ${prefix}cimage2 (premium user)\n╠➤ ${prefix}mylimits\n╚═════════════⊱\n╔══《 𝔻𝕆𝕎ℕ𝕃𝕆𝔸𝔻𝔼ℝ ══⊱\n╠➤ ${prefix}tiktok\n╠➤ ${prefix}ytmp3\n╠➤ ${prefix}ytmp4\n╠➤ ${prefix}urlshort\n╚═════════════⊱`;
 
-            const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱\n╠➤ ${prefix}addowner\n╠➤ ${prefix}addpremium\n╠➤ ${prefix}removepremium\n╠➤ ${prefix}removeowner\n╠➤ ${prefix}listowner\n╠➤ ${prefix}listpremium\n╠➤ ${prefix}kill\n╚═════════════⊱`
+            const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱\n╠➤ ${prefix}addowner\n╠➤ ${prefix}addpremium\n╠➤ ${prefix}removepremium\n╠➤ ${prefix}listowner\n╠➤ ${prefix}listpremium\n╠➤ ${prefix}kill\n╠➤ ${prefix}changeprefix\n╚═════════════⊱`
 
             const menus = `Hai kak _*${pushName.pushname}*_, ${getGreeting()}👋. Namaku *${config.BOT_NAME}*\n\nHari, tanggal : *${dateTime}*\nJam : *${currentTime}*\n${baseMenu}\n╔═══《 𝑹𝑼𝑵𝑻𝑰𝑴𝑬 》═══⊱\n╠❏ _*${runtime(process.uptime())}*_\n╚════[ ᄃﾘﾑﾑ ]══════⊱\n`;
 
@@ -171,8 +173,8 @@ client.on('message', async (msg) => {
                         // Kirim file sebagai sticker
                         client.sendMessage(msg.from, media, {
                             sendMediaAsSticker: true,
-                            stickerAuthor: "Mztay Bot",
-                            stickerName: "Gweh Anime by Mastay"
+                            stickerAuthor: "Mastay",
+                            stickerName: `*${config.BOT_NAME} | ${config.BOT_VER}*`,
                         })
                         .then(() => {
                             console.log(`${msg.from} Use command ${prefix}sticker. Status: Success`);
@@ -395,6 +397,32 @@ client.on('message', async (msg) => {
                 console.error(error);
                 msg.reply("Gagal mendownload audio");
             }
+        } else if(msg.body.startsWith(`${prefix}ytmp4`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+
+            const params = msg.body.split(" ");
+
+            if (params.length !== 2) {
+                console.log(`${msg.from} Use command ${prefix}ytmp4. Status: Invalid Parameter`);
+                return msg.reply(`Format salah, gunakan ${prefix}ytmp4 <url youtube>`);
+            }
+
+            msg.reply("Mohon tunggu....\nOrang sabar disayang zeta😋")
+
+            const url = params[1].trim();
+            const downloadUrl = await downloadYtVideo(url);
+            const media = await MessageMedia.fromUrl(downloadUrl.url, {
+                unsafeMime: true
+            });
+
+            client.sendMessage(msg.from, media, {
+                caption: `Sukses mendownload video berjudul *${downloadUrl.title}* dari channel *${downloadUrl.channel}*`
+            })
+            
         } else if (msg.body.startsWith(`${prefix}urlshort`)) {
             checkLimit(msg.from);
 
@@ -547,6 +575,10 @@ client.on('message', async (msg) => {
             console.log(`${msg.from} Use command ${prefix}addpremium. Status: Success`);
 
         } else if (msg.body.startsWith(`${prefix}changeprefix`)) {
+            if(!isBotOwner(msg.from)) {
+                console.log(`${msg.from} Use command ${prefix}changeprefix. Status: No Permission`);
+                return msg.reply("Kamu tidak memiliki izin untuk menggunakan command ini");
+            }
             const params = msg.body.split(" ");
         
             if (params.length !== 2) {
@@ -561,6 +593,48 @@ client.on('message', async (msg) => {
             } else {
                 return msg.reply(`Gunakan prefix dari list dibawah\nprefix list : !, #, /, $`);
             }
+        } else if(msg.body.startsWith(`${prefix}listpremium`)) {
+            if(!isBotOwner(msg.from)) {
+                console.log(`${msg.from} Use command ${prefix}listpremium. Status: No Permission`);
+                return msg.reply("Kamu tidak memiliki izin untuk menggunakan command ini");
+            }
+
+            const rawData = getPremiumUsers();
+            let premUsers = "";
+
+            for (let i = 0; i < rawData.length; i++) {
+                const params = rawData[i].split("@");
+                const number = params[0].trim();
+                premUsers += `\n↦ ${number}`
+            }
+
+            msg.reply(`ıllıllı 🇵‌🇷‌🇪‌🇲‌🇮‌🇺‌🇲‌ 🇺‌🇸‌🇪‌🇷‌ ıllıllı${premUsers}`);
+        } else if (msg.body.startsWith(`${prefix}removepremium`)) {
+            const params = msg.body.split(" ");
+
+            if(params.length !== 2) {
+                return msg.reply(`Gunakan ${prefix}removepremium <nomor telepon>`)
+            } else if(!isPremiumUser(`${params[1].trim()}@c.us`)) {
+                return msg.reply(`Nomor ${params[1].trim()} bukan premium user`)
+            }
+
+            removePremiumUser(`${params[1].trim()}@c.us`);
+        } else if(msg.body.startsWith(`${prefix}listowner`)) {
+            if(!isBotOwner(msg.from)) {
+                console.log(`${msg.from} Use command ${prefix}listowner. Status: No Permission`);
+                return msg.reply("Kamu tidak memiliki izin untuk menggunakan command ini");
+            }
+
+            const rawData = getOwnerLists();
+            let ownerUsers = "";
+
+            for (let i = 0; i < rawData.length; i++) {
+                const params = rawData[i].split("@");
+                const number = params[0].trim();
+                ownerUsers += `\n↦ ${number}`
+            }
+
+            msg.reply(`ıllıllı 🇱‌🇮‌🇸‌🇹‌ 🇴‌🇼‌🇳‌🇪‌🇷‌ ıllıllı${ownerUsers}`);
         } else {
             msg.reply(`Command _*${msg.body}*_ tidak tersedia, silahkan gunakan _*${prefix}help*_ atau _*${prefix}menu*_ untuk melihat semua command yang tersedia!`);
         }
