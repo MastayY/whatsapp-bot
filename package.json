@@ -1,6 +1,6 @@
 {
   "name": "mztay-bot",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Mztay bot adalah bot whatsapp yang dilengkapi berbagai fitur. Dibuat menggunakan wweb.js",
   "main": "index.js",
   "scripts": {
