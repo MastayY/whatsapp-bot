@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 const configuration = new Configuration({
-    apiKey: "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",
+    apiKey: process.env.GPT_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
 
