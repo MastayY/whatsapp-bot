@@ -8,7 +8,7 @@ const axios = require('axios');
 const ytmp3 = require('ytmp3-scrap');
 const ffmpeg = require('fluent-ffmpeg');
 const config = require('./config.js');
-const { runtime, query, tanggal, getGreeting, downloadYtVideo } = require('./lib/function.js');
+const { runtime, query, tanggal, getGreeting, downloadYtVideo, textToSpeech } = require('./lib/function.js');
 const {
     getLimitInfo,
     incrementLimitUsage,
@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 const configuration = new Configuration({
-    apiKey: "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",
+    apiKey: "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",
 });
 const openai = new OpenAIApi(configuration);
 
@@ -108,7 +108,7 @@ client.on('message', async (msg) => {
             const dateTime = tanggal(rawDateTime);
             const currentTime = new Date().toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
 
-            const baseMenu = `\n╔════《 _*INFO*_ 》════⊱\n╠➤ Bot Name    : *${config.BOT_NAME}*\n╠➤ Version     : *${config.BOT_VER}*\n╠➤ Prefix      : *${prefix}*\n╠➤ Owner       : *${config.BOT_OWNER}*\n╚═════════════⊱\n╔═══《 _SOSMED_ 》═══⊱\n╠➤ Instagram   : ${config.ig}\n╠➤ Youtube     : ${config.yt}\n╠➤ Github      : ${config.github}\n╠➤ Twitter     : ${config.twitter}\n╚═════════════⊱\n╔══《 _COMMAND_ 》══⊱\n╠➤ ${prefix}halo\n╠➤ ${prefix}menu\n╠➤ ${prefix}sticker\n╠➤ ${prefix}ask\n╠➤ ${prefix}menfes\n╠➤ ${prefix}cimage1\n╠➤ ${prefix}cimage2 (premium user)\n╠➤ ${prefix}mylimits\n╚═════════════⊱\n╔══《 𝔻𝕆𝕎ℕ𝕃𝕆𝔸𝔻𝔼ℝ ══⊱\n╠➤ ${prefix}tiktok\n╠➤ ${prefix}ytmp3\n╠➤ ${prefix}ytmp4\n╠➤ ${prefix}urlshort\n╚═════════════⊱`;
+            const baseMenu = `\n╔════《 _*INFO*_ 》════⊱\n╠➤ Bot Name    : *${config.BOT_NAME}*\n╠➤ Version     : *${config.BOT_VER}*\n╠➤ Prefix      : *${prefix}*\n╠➤ Owner       : *${config.BOT_OWNER}*\n╚═════════════⊱\n╔═══《 _SOSMED_ 》═══⊱\n╠➤ Instagram   : ${config.ig}\n╠➤ Youtube     : ${config.yt}\n╠➤ Github      : ${config.github}\n╠➤ Twitter     : ${config.twitter}\n╚═════════════⊱\n╔══《 _COMMAND_ 》══⊱\n╠➤ ${prefix}halo\n╠➤ ${prefix}menu\n╠➤ ${prefix}sticker\n╠➤ ${prefix}ask\n╠➤ ${prefix}menfes\n╠➤ ${prefix}cimage1\n╠➤ ${prefix}cimage2 (premium user)\n╠➤ ${prefix}text2speech\n╠➤ ${prefix}resendto\n╠➤ ${prefix}mylimits\n╚═════════════⊱\n╔══《 𝔻𝕆𝕎ℕ𝕃𝕆𝔸𝔻𝔼ℝ 》══⊱\n╠➤ ${prefix}tiktok\n╠➤ ${prefix}ytmp3\n╠➤ ${prefix}ytmp4\n╠➤ ${prefix}urlshort\n╚═════════════⊱`;
 
             const admMenu = `\n╔═══《 _𝙾𝚆𝙽𝙴𝚁_ 》════⊱\n╠➤ ${prefix}addowner\n╠➤ ${prefix}addpremium\n╠➤ ${prefix}removepremium\n╠➤ ${prefix}listowner\n╠➤ ${prefix}listpremium\n╠➤ ${prefix}kill\n╠➤ ${prefix}changeprefix\n╚═════════════⊱`
 
@@ -233,6 +233,29 @@ client.on('message', async (msg) => {
                 console.error(err);
             }
 
+        } else if(msg.body.startsWith(`${prefix}text2speech`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan limit menjadi 150")
+            }
+
+            const params = msg.body.split(" ");
+
+            if(params.length === 2) {
+                console.log(`${msg.from} Use command ${prefix}text2speech. Status : Invalid Parameter`);
+                return msg.reply(`Format salah, gunakan ${prefix}text2speech <teks>`);
+            }
+
+            const text = params.slice(1).join(" ");
+            const downloadUrl = await textToSpeech(text);
+            const result = await MessageMedia.fromUrl(downloadUrl.sound_url, {
+                unsafeMime: true
+            });
+
+            client.sendMessage(msg.from, result, {
+                sendAudioAsVoice: true,
+            })
         } else if(msg.body.startsWith(`${prefix}cimage1`)) {
             checkLimit(msg.from);
 
@@ -266,6 +289,47 @@ client.on('message', async (msg) => {
                 console.log(`${msg.from} Use command ${prefix}cimage1. Status : Error`);
                 console.error(err);
             }
+
+        } else if(msg.body.startsWith(`${prefix}resendto`)) {
+            if(!msg.hasQuotedMsg) {
+                return msg.reply(`Gunakan ${prefix}resendto <nomor telepon>.\n Pastikan pesan yang akan di kirim ulang di reply.`);
+            }
+
+            const params = msg.body.split(" ");
+
+            if(params.length !== 2) {
+                return msg.reply(`Gunakan ${prefix}resendto <nomor telepon>.\n Pastikan pesan yang akan di kirim ulang di reply.`);
+            }
+
+            const isRegisteredNumber = await client.isRegisteredUser(params[1].trim());
+
+            if(!isRegisteredNumber) {
+                return msg.reply("Nomor tidak terdaftar di whatsapp. Pastikan kamu menulis nomor dengan benar\nContoh : 6285643094917");
+            }
+
+            const number = `${params[1].trim()}@c.us`;
+            const pushName = await msg.getContact();
+            const quotedMsg = await msg.getQuotedMessage();
+
+            if (quotedMsg.type === "chat") {
+                // Mengirim ulang pesan teks
+                client.sendMessage(number, quotedMsg.body);
+                msg.reply("Berhasil terkirim.");
+            } else if (quotedMsg.hasMedia) {
+                // Mengirim ulang media (gambar, video, dll.)
+                const media = await quotedMsg.downloadMedia();
+                const mediaCaptions = quotedMsg.caption || "";
+                client.sendMessage(number, media, {
+                    caption: mediaCaptions,
+                    sendAudioAsVoice: true
+                });
+                msg.reply("Berhasil terkirim.");
+            } else {
+                // Pesan tidak didukung untuk dikirim ulang
+                return msg.reply("Jenis pesan ini tidak dapat dikirim ulang.");
+            }
+
+            client.sendMessage(number, `Hai, kamu dapet pesan kiriman dari ${pushName.pushname}`);
 
         } else if (msg.body.startsWith(`${prefix}menfes`)) {
             checkLimit(msg.from);
@@ -478,6 +542,7 @@ client.on('message', async (msg) => {
 
             const desc = params.slice(1).join(" ");
             const result = await query({ "inputs": `${desc}` });
+            msg.reply("Mohon tunggu....\nOrang sabar disayang zeta😋");
             fs.writeFile('./src/file/result.jpg', result, async (error) => {
                 if (error) {
                     return console.error('Gagal menyimpan file:', error);
