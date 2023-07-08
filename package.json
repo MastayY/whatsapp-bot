@@ -34,7 +34,7 @@
     "node-fetch": "^2.6.5",
     "openai": "^3.3.0",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js",
+    "whatsapp-web.js": "D:/NasywanPrivat/whatsapp-web.js-1.21.0.tar.gz",
     "ytmp3-scrap": "^1.0.0"
   }
 }

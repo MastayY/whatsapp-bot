@@ -26,12 +26,15 @@ const {
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-extensions']
+        // executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
     }
 });
 
 const configuration = new Configuration({
     apiKey: process.env.GPT_API_KEY,
+    // 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
 });
 const openai = new OpenAIApi(configuration);
 
