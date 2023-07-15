@@ -1,9 +1,9 @@
-const axios = require('axios');
+const { get } = require('axios');
 
 function urlShortener(url) {
-    const linkUrl = `https://daniapi.my.id/api/url-shortener/bitly?url=${url}&keys=mastaycuy`;
+    const linkUrl = `https://daniapi.my.id/api/url-shortener/bitly?url=${url}&key=mastaycuy`;
 
-    return axios.get(linkUrl)
+    return get(linkUrl)
         .then(response => {
             return response.data.data.url_shortener;
         })
@@ -21,13 +21,13 @@ function urlShortener(url) {
 }
 
 function tiktokDownloader(url, type) {
-    const linkUrl = `https://daniapi.my.id/api/downloader/tiktok?url=${url}&keys=mastaycuy`;
+    const linkUrl = `https://daniapi.my.id/api/downloader/tiktok?url=${url}&key=mastaycuy`;
 
     if(type === 'video') {
         type = 'video2';
     }
 
-    return axios.get(linkUrl)
+    return get(linkUrl)
         .then(response => {
             return response.data.data[type];
         })
@@ -45,6 +45,6 @@ function tiktokDownloader(url, type) {
 }
 
 module.exports = {
-    urlShortener: urlShortener,
-    tiktokDownloader: tiktokDownloader,
-};
+    urlShortener,
+    tiktokDownloader
+}

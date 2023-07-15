@@ -4,7 +4,8 @@
   "description": "Mztay bot adalah bot whatsapp yang dilengkapi berbagai fitur. Dibuat menggunakan wweb.js",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "start-dev": "nodemon index.js"
   },
   "repository": {
     "type": "git",
@@ -24,17 +25,24 @@
   },
   "homepage": "https://github.com/MastayY/whatsapp-bot#readme",
   "dependencies": {
+    "@ernestoyoofi/bmkg-scrap": "github:ernestoyoofi/bmkg-scrap",
+    "acrcloud": "^1.4.0",
     "axios": "^1.4.0",
     "ffmpeg-static": "^5.1.0",
     "fluent-ffmpeg": "^2.1.2",
+    "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
+    "https": "^1.0.0",
     "lowdb": "^1.0.0",
     "moment": "^2.29.4",
     "node-cron": "^3.0.2",
     "node-fetch": "^2.6.5",
+    "nodemon": "^3.0.1",
     "openai": "^3.3.0",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js",
+    "sharp": "^0.32.2",
+    "threads-api": "^1.3.0",
+    "whatsapp-web.js": "D:/NasywanPrivat/whatsapp-web.js-1.21.0.tar.gz",
     "ytmp3-scrap": "^1.0.0"
   }
 }

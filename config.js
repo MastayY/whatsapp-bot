@@ -6,5 +6,8 @@ module.exports = {
    ig: '@mastayy.js',
    github: '@MastayY',
    yt: '-',
-   twitter: '-'
+   twitter: '-',
+   ACR_HOST: 'identify-ap-southeast-1.acrcloud.com',
+   ACR_KEY: 'f6aac845738fee32b05efc02ad2c5c03',
+   ACR_SECRET_KEY: 'ldrw8XnHyk2SotTZ37EfQjY2FbiAHcnRqhu7heu7'
 }
