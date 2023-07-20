@@ -47,7 +47,7 @@ const client = new Client({
 });
 
 const configuration = new Configuration({
-    apiKey: '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',
+    apiKey: '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',
     // apiKey: process.env.GPT_API_KEY
 });
 const openai = new OpenAIApi(configuration);
@@ -893,7 +893,7 @@ client.on('message', async (msg) => {
             if(limitreached) {
                 return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
             }
-            
+
             if(!isMUserExist(msg.from)) {
                 return msg.reply("Kamu belum mendaftarkan diri sebagai MUser!\nGunakan *!register username* untuk mendaftar sebagai MUser")
             }
