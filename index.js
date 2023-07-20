@@ -9,7 +9,7 @@ const ytmp3 = require('ytmp3-scrap');
 const ffmpeg = require('fluent-ffmpeg');
 const config = require('./config.js');
 const { Acrcloud } = require('./lib/classes.js');
-const { runtime, query, tanggal, getGreeting, downloadYtVideo, textToSpeech, threadsPublishText, identifyUrl, threadsPublishImage, recentEarthquake, downloadImage, deleteFile } = require('./lib/function.js');
+const { runtime, query, tanggal, getGreeting, downloadYtVideo, textToSpeech, threadsPublishText, identifyUrl, threadsPublishImage, recentEarthquake, downloadImage, deleteFile, anonfilesUpload } = require('./lib/function.js');
 const {
     getLimitInfo,
     incrementLimitUsage,
@@ -157,81 +157,148 @@ client.on('message', async (msg) => {
 
             console.log(`${msg.from} Use command ${prefix}allmenu. Status : Success`);
 
-        } else if(msg.body.startsWith(`${prefix}sticker`)) {
+        } else if(msg.body.startsWith(`${prefix}sticker`) || msg.body.startsWith(`${prefix}s`)) {
             checkLimit(msg.from);
 
             if(limitreached) {
                 return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
             }
 
-            if(!msg.hasMedia) {
-                return msg.reply(`Format salah, pastikan kamu mengirim gambar dengan caption ${prefix}sticker.`);
-            }
+            if(msg.hasMedia) {
+                msg.react("🔄️");
 
-            msg.react("🔄️");
+                if (msg.type === 'image') {
+                    const media = await msg.downloadMedia() .catch((err) => {
+                        console.error(err);
+                        client.sendMessage("Error downloading media");
+                    });
 
-            if (msg.type === 'image') {
-                const media = await msg.downloadMedia() .catch((err) => {
-                    console.error(err);
-                    client.sendMessage("Error downloading media");
-                });
+                    client.sendMessage(msg.from, media, {
+                        sendMediaAsSticker: true,
+                        stickerAuthor: "Mztay Bot",
+                        stickerName: "Gweh Anime",
+                    });
+                    msg.react("✅");
+                    console.log(`${msg.from} Use command ${prefix}sticker. Status : Success`);
 
-                client.sendMessage(msg.from, media, {
-                    sendMediaAsSticker: true,
-                    stickerAuthor: "Mztay Bot",
-                    stickerName: "Gweh Anime by Mastay",
-                });
-                msg.react("✅");
-                console.log(`${msg.from} Use command ${prefix}sticker. Status : Success`);
+                } else if (msg.type === 'video') {
+                    const media = await msg.downloadMedia();
+                    const filePath = path.join(__dirname, 'src/file/result/sticker.mp4');
+                
+                    // Simpan media ke file sementara
+                    fs.writeFileSync(filePath, media.data, 'base64');
 
-            } else if (msg.type === 'video') {
-                const media = await msg.downloadMedia();
-                const filePath = path.join(__dirname, 'src/file/result/sticker.mp4');
-            
-                // Simpan media ke file sementara
-                fs.writeFileSync(filePath, media.data, 'base64');
+                    // Periksa durasi video menggunakan ffprobe
+                    ffmpeg.ffprobe(filePath, (err, metadata) => {
+                        if (err) {
+                            console.error('Terjadi kesalahan saat mengambil metadata video:', err);
+                            return fs.unlinkSync(filePath); // Hapus file sementara jika terjadi kesalahan
+                        }
 
-                // Periksa durasi video menggunakan ffprobe
-                ffmpeg.ffprobe(filePath, (err, metadata) => {
-                    if (err) {
-                        console.error('Terjadi kesalahan saat mengambil metadata video:', err);
-                        return fs.unlinkSync(filePath); // Hapus file sementara jika terjadi kesalahan
-                    }
+                        const duration = metadata.format.duration;
+                        console.log(`Durasi video: ${runtime(duration)}`);
 
-                    const duration = metadata.format.duration;
-                    console.log(`Durasi video: ${runtime(duration)}`);
+                        const media = MessageMedia.fromFilePath('src/file/result/sticker.mp4')
 
-                    const media = MessageMedia.fromFilePath('src/file/result/sticker.mp4')
-
-                    if (duration < 8) {
-                        // Kirim file sebagai sticker
-                        client.sendMessage(msg.from, media, {
-                            sendMediaAsSticker: true,
-                            stickerAuthor: "Mastay",
-                            stickerName: `*${config.BOT_NAME} | ${config.BOT_VER}*`,
-                        })
-                        .then(() => {
-                            console.log(`${msg.from} Use command ${prefix}sticker. Status: Success`);
-                            msg.react("✅");
-                            // Hapus file setelah berhasil terkirim
-                            fs.unlinkSync(filePath);
-                        })
-                        .catch((error) => {
+                        if (duration < 8) {
+                            // Kirim file sebagai sticker
+                            client.sendMessage(msg.from, media, {
+                                sendMediaAsSticker: true,
+                                stickerAuthor: "Mastay",
+                                stickerName: `*${config.BOT_NAME} | ${config.BOT_VER}*`,
+                            })
+                            .then(() => {
+                                console.log(`${msg.from} Use command ${prefix}sticker. Status: Success`);
+                                msg.react("✅");
+                                // Hapus file setelah berhasil terkirim
+                                fs.unlinkSync(filePath);
+                            })
+                            .catch((error) => {
+                                msg.react("❌");
+                                console.error('Terjadi kesalahan saat mengirim sticker:', error);
+                                fs.unlinkSync(filePath); // Hapus file jika terjadi kesalahan saat mengirim
+                            });
+                        } else {
+                            msg.reply(`Durasi maksimal adalah 7 detik.\nDurasi video ini: ${runtime(duration)}`);
                             msg.react("❌");
-                            console.error('Terjadi kesalahan saat mengirim sticker:', error);
-                            fs.unlinkSync(filePath); // Hapus file jika terjadi kesalahan saat mengirim
-                        });
-                    } else {
-                        msg.reply(`Durasi maksimal adalah 7 detik.\nDurasi video ini: ${runtime(duration)}`);
-                        msg.react("❌");
-                        // Hapus file sementara karena durasi terlalu panjang
-                        fs.unlinkSync(filePath);
-                    }
-                });
-            } else {
-                console.log(`${msg.from} Use command ${prefix}sticker. Status : Invalid Format Type`);
-                msg.reply(`Format salah, pastikan kamu mengirim gambar dengan caption ${prefix}sticker.`)
-                msg.react("❌");
+                            // Hapus file sementara karena durasi terlalu panjang
+                            fs.unlinkSync(filePath);
+                        }
+                    });
+                } else {
+                    console.log(`${msg.from} Use command ${prefix}sticker. Status : Invalid Format Type`);
+                    msg.reply(`Format salah, pastikan kamu mengirim gambar dengan caption ${prefix}sticker.`)
+                    msg.react("❌");
+                }
+            } else if(msg.hasQuotedMsg) {
+                const quotedMsg = await msg.getQuotedMessage()
+
+                if(!quotedMsg.hasMedia) {
+                    msg.react("❌")
+                    return msg.reply("Pesan yang di reply harus berupa gambar atau video")
+                }
+
+                msg.react("🔄️");
+
+                if (quotedMsg.type === 'image') {
+                    const media = await quotedMsg.downloadMedia() .catch((err) => {
+                        console.error(err);
+                        client.sendMessage("Error downloading media");
+                    });
+
+                    client.sendMessage(msg.from, media, {
+                        sendMediaAsSticker: true,
+                        stickerAuthor: "Mztay Bot",
+                        stickerName: "Gweh Anime",
+                    });
+                    msg.react("✅");
+                    console.log(`${quotedMsg.from} Use command ${prefix}sticker. Status : Success`);
+
+                } else if (quotedMsg.type === 'video') {
+                    const media = await quotedMsg.downloadMedia();
+                    const filePath = path.join(__dirname, 'src/file/result/sticker.mp4');
+                
+                    // Simpan media ke file sementara
+                    fs.writeFileSync(filePath, media.data, 'base64');
+
+                    // Periksa durasi video menggunakan ffprobe
+                    ffmpeg.ffprobe(filePath, (err, metadata) => {
+                        if (err) {
+                            console.error('Terjadi kesalahan saat mengambil metadata video:', err);
+                            return fs.unlinkSync(filePath); // Hapus file sementara jika terjadi kesalahan
+                        }
+
+                        const duration = metadata.format.duration;
+                        console.log(`Durasi video: ${runtime(duration)}`);
+
+                        const media = MessageMedia.fromFilePath('src/file/result/sticker.mp4')
+
+                        if (duration < 8) {
+                            // Kirim file sebagai sticker
+                            client.sendMessage(msg.from, media, {
+                                sendMediaAsSticker: true,
+                                stickerAuthor: "Mztay Bot",
+                                stickerName: "Gweh Anime",
+                            })
+                            .then(() => {
+                                console.log(`${quotedMsg.from} Use command ${prefix}sticker. Status: Success`);
+                                msg.react("✅");
+                                // Hapus file setelah berhasil terkirim
+                                fs.unlinkSync(filePath);
+                            })
+                            .catch((error) => {
+                                msg.react("❌");
+                                console.error('Terjadi kesalahan saat mengirim sticker:', error);
+                                fs.unlinkSync(filePath); // Hapus file jika terjadi kesalahan saat mengirim
+                            });
+                        } else {
+                            msg.reply(`Durasi maksimal adalah 7 detik.\nDurasi video ini: ${runtime(duration)}`);
+                            msg.react("❌");
+                            // Hapus file sementara karena durasi terlalu panjang
+                            fs.unlinkSync(filePath);
+                        }
+                    });
+                }
             }
         } else if (msg.body.startsWith(`${prefix}ask`)) {
             checkLimit(msg.from);
@@ -613,7 +680,30 @@ client.on('message', async (msg) => {
                 msg.reply("Gagal mengakses API");
                 console.log(`${msg.from} Use command ${prefix}urlshort. Status: Failed`, error);
             }
-        } else if (msg.body.startsWith(`${prefix}cimage2`)) {
+        } 
+        // else if(msg.body === `${prefix}anonfiles`) {
+        //     if(msg.hasMedia) {
+        //         var media = await message.downloadMedia(); // Unduh file media
+        //     } else if(msg.hasQuotedMsg) {
+        //         const quotedMsg = await msg.getQuotedMessage()
+
+        //         if(!quotedMsg.hasMedia) {
+        //             return msg.reply(`Pesan harus berupa media`)
+        //         }
+
+        //         var media = await quotedMsg.downloadMedia();
+        //     } else {
+        //         msg.reply(`Gunakan ${prefix}anonfiles pada caption gambar maupun mereply file yang ingin diupload`)
+        //     }
+
+        //     const fileStream = fs.createWriteStream(media.filename);
+        //     media.stream.pipe(fileStream);
+        //     fileStream.on('finish', async () => {
+        //         const urlResult = await anonfilesUpload(media);
+        //         msg.reply(`Result : ${urlResult}`);
+        //     });
+        // } 
+        else if (msg.body.startsWith(`${prefix}cimage2`)) {
             if (!isPremiumUser || !isBotOwner) {
               return msg.reply(`Fitur ini khusus pengguna premium, kamu bisa gunakan versi free user dari image generation yaitu *${prefix}cimage1*`);
             }
@@ -745,6 +835,8 @@ client.on('message', async (msg) => {
 
         // ============================== MINIGAMES SECTION ============================
         else if(msg.body.startsWith(`${prefix}minigames`)) {
+            checkLimit(msg.from)
+
             if(!isMUserExist(msg.from)) {
                 return msg.reply("Kamu belum mendaftarkan diri sebagai MUser!\nGunakan *!register username* untuk mendaftar sebagai MUser")
             }
@@ -753,6 +845,7 @@ client.on('message', async (msg) => {
             const username = getMUsername(msg.from)
             msg.reply(`\nıllııllıllı ᴘʀᴏғɪʟᴇ ɪɴғᴏ ıllıllııllı\n\n*❏ Username :* ${username}\n*❏ MCash :* ${userCoins}\n\n*MINIGAMES LIST*\n*☞ ${prefix}cointoss*\n`)
         } else if(msg.body.startsWith(`${prefix}register`)) {
+            checkLimit(msg.from)
             const params = msg.body.split(" ")
 
             if(params.length !== 2) {
@@ -795,6 +888,12 @@ client.on('message', async (msg) => {
                 msg.reply("MCash berhasil ditambahkan.");
             }
         } else if(msg.body.startsWith(`${prefix}cointoss`)) {
+            checkLimit(msg.from);
+
+            if(limitreached) {
+                return msg.reply("Limit harian sudah terpenuhi. Silahkan coba besok lagi atau kamu bisa membeli premium user dan mendapat unlimited limit hanya dengan 10k")
+            }
+            
             if(!isMUserExist(msg.from)) {
                 return msg.reply("Kamu belum mendaftarkan diri sebagai MUser!\nGunakan *!register username* untuk mendaftar sebagai MUser")
             }

@@ -8,7 +8,7 @@
     {
       "userId": "6285643094917@c.us",
       "limit": 10000000,
-      "used": 61
+      "used": 11
     },
     {
       "userId": "6285799687466@c.us",
@@ -28,37 +28,18 @@
     {
       "userId": "6283146553072@c.us",
       "limit": 20,
-      "used": 2
+      "used": 0
     },
     {
       "userId": "6285701976967@c.us",
       "limit": 20,
-      "used": 2
+      "used": 0
     }
   ],
   "botOwners": [
     "6285643094917@c.us"
   ],
-  "messages": [
-    {
-      "sender": "6285643094917@c.us",
-      "recipient": "6285701976967@c.us",
-      "message": "hai kamu lagi apa?",
-      "timestamp": 1689329118295
-    },
-    {
-      "sender": "6285643094917@c.us",
-      "recipient": "6285701976967@c.us",
-      "message": "hai kamu lagi apa?",
-      "timestamp": 1689329278434
-    },
-    {
-      "sender": "6285643094917@c.us",
-      "recipient": "6285701976967@c.us",
-      "message": "hai kamu lagi apa?",
-      "timestamp": 1689329390147
-    }
-  ],
+  "messages": [],
   "recipients": [
     "6285701976967@c.us",
     "6285701976967@c.us",
